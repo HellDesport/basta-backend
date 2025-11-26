@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Basta — En juego</title>
 
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -19,16 +20,16 @@
                     },
                     animation: {
                         'lift': 'lift 0.25s ease-out forwards',
-                        'fade-up': 'fadeUp 0.3s ease-out forwards',
+                        'fade-up': 'fadeUp 0.3s ease-out forwards'
                     },
                     keyframes: {
                         lift: {
                             '0%': { transform: 'translateY(10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
                         },
                         fadeUp: {
                             '0%': { transform: 'translateY(10px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
                         }
                     }
                 }
@@ -71,7 +72,6 @@
 
             <!-- HEADER DE RONDA -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden">
-
                 <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-brand-500/20 blur-3xl rounded-full pointer-events-none"></div>
 
                 <div class="flex items-center justify-between">
@@ -99,14 +99,13 @@
                         class="text-3xl font-mono font-bold text-slate-200 tabular-nums tracking-tight">00:00</div>
                 </div>
 
-                <!-- 🔥 PROGRESO DE ENVÍOS ANTI-TROLL -->
+                <!-- texto anti-troll -->
                 <p id="roundProgressText"
-                   class="text-xs text-slate-400 mt-2 text-center opacity-0 transition-opacity duration-300">
-                </p>
+                    class="text-xs text-slate-400 mt-2 text-center opacity-0 transition-opacity duration-300"></p>
 
                 <div class="mt-4 h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div id="roundProgress"
-                        class="h-full bg-gradient-to-r from-brand-500 to-cyan-400 w-full transition-all duration-1000 ease-linear origin-left"></div>
+                        class="h-full bg-gradient-to-r from-brand-500 to-cyan-400 transition-all duration-1000 ease-linear origin-left"></div>
                 </div>
             </div>
 
@@ -146,7 +145,6 @@
             </div>
 
             <div class="flex-1 flex flex-col p-6 relative">
-
                 <div id="podium" class="flex flex-col gap-3 w-full transition-all"></div>
 
                 <div class="mt-4 text-center p-2 bg-slate-800 rounded-lg border border-slate-700">
@@ -158,19 +156,13 @@
 
     </div>
 
-    <!-- SOCKET -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- SOCKET PARA ELECTRON: desde BACKEND directamente -->
+    <script src="https://basta-backend-game.onrender.com/socket.io/socket.io.js"></script>
 
-    <!-- DIAG -->
-    <script type="module">
-        import { initDiag } from "../js/diag.js";
-        initDiag({ page: "ingame", apiBase: "", wsUrl: "http://localhost:8080" });
-    </script>
+    <!-- LÓGICA PRINCIPAL -->
+    <script type="module" src="./js/ingame.js"></script>
 
-    <!-- LOGICA DE JUEGO -->
-    <script type="module" src="../js/ingame.js"></script>
-
-    <!-- CONFETTI CANVAS -->
+    <!-- CONFETTI -->
     <canvas id="confettiCanvas" class="pointer-events-none fixed inset-0 z-[60]"></canvas>
 
 </body>

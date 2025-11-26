@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Basta — En juego</title>
 
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -99,7 +100,7 @@
                         class="text-3xl font-mono font-bold text-slate-200 tabular-nums tracking-tight">00:00</div>
                 </div>
 
-                <!-- 🔥 PROGRESO DE ENVÍOS ANTI-TROLL -->
+                <!-- texto anti-troll progreso -->
                 <p id="roundProgressText"
                    class="text-xs text-slate-400 mt-2 text-center opacity-0 transition-opacity duration-300">
                 </p>
@@ -158,19 +159,27 @@
 
     </div>
 
-    <!-- SOCKET -->
+    <!-- SOCKET (dinámico) -->
     <script src="/socket.io/socket.io.js"></script>
 
-    <!-- DIAG -->
+    <!-- CONFIG GLOBAL -->
+    <script type="module" src="../js/config.js"></script>
+
+    <!-- DIAGNÓSTICO -->
     <script type="module">
         import { initDiag } from "../js/diag.js";
-        initDiag({ page: "ingame", apiBase: "", wsUrl: "http://localhost:8080" });
+        import { API_BASE, SOCKET_URL } from "../js/config.js";
+        initDiag({
+            page: "ingame",
+            apiBase: API_BASE,
+            wsUrl: SOCKET_URL
+        });
     </script>
 
-    <!-- LOGICA DE JUEGO -->
+    <!-- LÓGICA PRINCIPAL -->
     <script type="module" src="../js/ingame.js"></script>
 
-    <!-- CONFETTI CANVAS -->
+    <!-- CONFETTI -->
     <canvas id="confettiCanvas" class="pointer-events-none fixed inset-0 z-[60]"></canvas>
 
 </body>

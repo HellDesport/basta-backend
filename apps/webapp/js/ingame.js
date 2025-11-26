@@ -1,7 +1,10 @@
 // webapp/js/ingame.js
 import { startConfetti, stopConfetti } from "./confetti.js";
-const API_BASE = "/api";
-const ioPath = "/socket.io";
+// BACKEND DEPLOYED EN RENDER
+const BACKEND_URL = "https://basta-backend-game.onrender.com";
+
+// API completa
+const API_BASE = `${BACKEND_URL}/api`;
 
 /* =======================================================
    SESSION
@@ -41,8 +44,9 @@ const btnLeave = $("#btnLeave");
 /* =======================================================
    SOCKET
 ======================================================= */
-const socket = io("/", {
-  path: ioPath,
+
+const socket = io(BACKEND_URL, {
+  path: "/socket.io",
   transports: ["websocket", "polling"]
 });
 

@@ -1,69 +1,100 @@
 // webapp/js/menu.js
-const API_BASE = "/api"; // ajusta si tu backend cuelga en otra ruta/origen
 
-const $ = (sel) => document.querySelector(sel);
+// ===============================
+// BACKEND DEPLOYED EN RENDER
+// ===============================
+const BACKEND_URL = "https://basta-backend-game.onrender.com";
+const API_BASE = `${BACKEND_URL}/api`;
+
+// ------------------------------
+// Helpers cortos
+// ------------------------------
+const $ = (s) => document.querySelector(s);
+
 const showErr = (id, msg) => {
   const el = $(id);
   el.textContent = msg;
   el.style.display = msg ? "block" : "none";
 };
 
-// ---- Validaciones ----
+// ------------------------------
+// Validaciones
+// ------------------------------
 const isValidCode = (code) => /^[A-Z0-9]{4,8}$/i.test(code.trim());
-const isValidName = (name) => name.trim().length >= 2 && name.trim().length <= 20;
+const isValidName = (name) => {
+  const s = name.trim();
+  return s.length >= 2 && s.length <= 20;
+};
 
-// ---- Storage helpers ----
+// ------------------------------
+// Persistencia local
+// ------------------------------
 function persistSession({ game, player, token }) {
   localStorage.setItem("gameCode", game.code);
   localStorage.setItem("gameId", String(game.id));
   localStorage.setItem("playerId", String(player.id));
   localStorage.setItem("playerName", player.name);
+
   if (token) localStorage.setItem("authToken", token);
 }
 
-// ---- API wrappers ----
+// ------------------------------
+// API WRAPPER universal
+// ------------------------------
 async function api(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-    ...opts,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    method: opts.method || "GET",
+    headers: {
+      "Content-Type": "application/json",
+      ...(opts.headers || {})
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
   });
+
+  const json = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || `HTTP ${res.status}`);
+    throw new Error(json.error || json.message || `HTTP ${res.status}`);
   }
-  return res.json();
+  return json;
 }
 
+// ------------------------------
+// ENDPOINTS limpiazos
+// ------------------------------
 async function createGame(hostName) {
-  // Esperado: POST /api/games  { hostName }
-  return api("/games", { method: "POST", body: { hostName } });
+  return api(`/games`, {
+    method: "POST",
+    body: { hostName }
+  });
 }
 
 async function joinGame(code, name) {
-  // Esperado: POST /api/games/:code/join  { name }
   return api(`/games/${encodeURIComponent(code)}/join`, {
     method: "POST",
-    body: { name },
+    body: { name }
   });
 }
 
-// ---- Wire UI ----
+// ------------------------------
+// EVENTOS UI
+// ------------------------------
 $("#btn-create").addEventListener("click", async () => {
   showErr("#create-error", "");
-  const host = $("#host-name").value;
+  const host = $("#host-name").value.trim();
 
   if (!isValidName(host)) {
-    showErr("#create-error", "Pon un nombre (2–20 caracteres).");
+    showErr("#create-error", "Pon un nombre de 2–20 caracteres.");
     return;
   }
 
   try {
-    const data = await createGame(host.trim());
+    const data = await createGame(host);
     persistSession(data);
-    // Redirige al lobby, pasando el código por si lo quieres en URL
-    window.location.href = `./public/lobby.html?code=${encodeURIComponent(data.game.code)}`;
+
+    window.location.href = `./public/lobby.html?code=${encodeURIComponent(
+      data.game.code
+    )}`;
   } catch (e) {
     showErr("#create-error", e.message);
   }
@@ -71,22 +102,26 @@ $("#btn-create").addEventListener("click", async () => {
 
 $("#btn-join").addEventListener("click", async () => {
   showErr("#join-error", "");
-  const code = $("#join-code").value;
-  const name = $("#join-name").value;
+  const code = $("#join-code").value.trim();
+  const name = $("#join-name").value.trim();
 
   if (!isValidCode(code)) {
     showErr("#join-error", "Código inválido (4–8 caracteres alfanuméricos).");
     return;
   }
+
   if (!isValidName(name)) {
-    showErr("#join-error", "Pon un nombre (2–20 caracteres).");
+    showErr("#join-error", "Pon un nombre de 2–20 caracteres.");
     return;
   }
 
   try {
-    const data = await joinGame(code.trim().toUpperCase(), name.trim());
+    const data = await joinGame(code.toUpperCase(), name);
     persistSession(data);
-    window.location.href = `./public/lobby.html?code=${encodeURIComponent(data.game.code)}`;
+
+    window.location.href = `./public/lobby.html?code=${encodeURIComponent(
+      data.game.code
+    )}`;
   } catch (e) {
     showErr("#join-error", e.message);
   }

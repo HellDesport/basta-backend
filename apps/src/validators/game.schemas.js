@@ -33,9 +33,9 @@ export const CreateGameSchema = z.object({
    JOIN
 ======================================================= */
 export const JoinSchema = z.object({
-  name: z.string().min(2).max(64)
+  gameCode: z.string().min(4).max(8),
+  playerName: z.string().min(2).max(64)
 });
-
 /* =======================================================
    INICIAR RONDA MANUAL
 ======================================================= */

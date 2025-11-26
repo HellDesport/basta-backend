@@ -12,15 +12,16 @@ function createWindow() {
     backgroundColor: "#000000",
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
     }
   });
 
-  win.loadFile(path.join(__dirname, "app/index_menu.html"));
+  // Carga el menú principal
+  win.loadFile(path.resolve(__dirname, "app/index_menu.html"));
 }
 
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null);  // 👈 QUITA EL MENÚ
+  Menu.setApplicationMenu(null); // Quita barra de menú
   createWindow();
 });
 
