@@ -129,3 +129,40 @@ export async function checkGameEnd(gameId) {
     roundsPlayed
   };
 }
+
+
+/* =======================================================
+   UNIRSE A UN JUEGO EXISTENTE
+======================================================= */
+export async function joinGame({ gameCode, playerName }) {
+  const code = gameCode.toUpperCase();
+
+  const game = await gameRepo.getGameByCode(code);
+  if (!game) {
+    return {
+      ok: false,
+      error: "GAME_NOT_FOUND"
+    };
+  }
+
+  // Agregar jugador
+  const player = await gameRepo.addPlayer(game.id, playerName, false);
+
+  // Obtener jugadores actuales
+  const players = await gameRepo.listPlayers(game.id);
+
+  return {
+    ok: true,
+    game: {
+      id: game.id,
+      code: game.code,
+      status: game.status,
+      pointLimit: game.point_limit,
+      roundLimit: game.round_limit,
+      durationSec: game.duration_sec ?? 60,
+      currentRound: game.current_round ?? 0
+    },
+    player,
+    players
+  };
+}

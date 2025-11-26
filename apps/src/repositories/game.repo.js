@@ -38,13 +38,23 @@ export async function getGameById(id) {
 }
 
 /* =======================================================
-   AGREGAR JUGADOR
+   AGREGAR JUGADOR (sin duplicados + normalizado)
 ======================================================= */
 export async function addPlayer(gameId, name, isHost = false) {
+  const cleanName = name.trim();
+
+  // evitar duplicados
+  const [existing] = await q(
+    `SELECT * FROM player WHERE game_id = ? AND name = ? LIMIT 1`,
+    [gameId, cleanName]
+  );
+
+  if (existing) return existing;
+
   const [res] = await pool.query(
     `INSERT INTO player (game_id, name, is_host, score)
      VALUES (?, ?, ?, 0)`,
-    [gameId, name, isHost ? 1 : 0]
+    [gameId, cleanName, isHost ? 1 : 0]
   );
 
   const [p] = await q(`SELECT * FROM player WHERE id = ?`, [res.insertId]);

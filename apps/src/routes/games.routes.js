@@ -23,7 +23,7 @@ gamesRouter.post("/", async (req, res, next) => {
 });
 
 /* =======================================================
-   POST /games/:code/join → Unirse a sala
+   POST /games/:code/settings → Actualizar límite de puntos y rondas
 ======================================================= */
 gamesRouter.post("/:code/settings", async (req, res, next) => {
   try {
@@ -41,7 +41,19 @@ gamesRouter.post("/:code/settings", async (req, res, next) => {
     });
 
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
 
+/* =======================================================
+   POST /games/join → Unirse a una sala existente
+======================================================= */
+gamesRouter.post("/join", async (req, res, next) => {
+  try {
+    const body = JoinSchema.parse(req.body);
+    const data = await gameService.joinGame(body); // o join(), según tu service
+    res.json(data);
   } catch (e) {
     next(e);
   }
