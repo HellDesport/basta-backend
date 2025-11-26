@@ -51,7 +51,7 @@ lblCode.textContent = gameCode;
 // =======================================
 const socket = io(SOCKET_URL, {
   path: SOCKET_PATH,
-  transports: ["websocket", "polling"]
+  transports: ["websocket"]
 });
 
 // =======================================

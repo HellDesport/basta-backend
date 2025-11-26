@@ -173,25 +173,25 @@
         </div>
     </div>
 
-    <!-- SOCKET DINÁMICO -->
+<!-- SOCKET.IO CLIENT -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
+<!-- CONFIG -->
+<script type="module" src="../js/config.js"></script>
 
-    <!-- CONFIG -->
-    <script type="module" src="../js/config.js"></script>
+<!-- DIAGNÓSTICO -->
+<script type="module">
+    import { initDiag } from "../js/diag.js";
+    import { API_BASE, SOCKET_URL } from "../js/config.js";
+    initDiag({
+        page: "lobby",
+        apiBase: API_BASE,
+        wsUrl: SOCKET_URL
+    });
+</script>
 
-    <!-- DIAGNÓSTICO -->
-    <script type="module">
-        import { initDiag } from "../js/diag.js";
-        import { API_BASE, SOCKET_URL } from "../js/config.js";
-        initDiag({
-            page: "lobby",
-            apiBase: API_BASE,
-            wsUrl: SOCKET_URL
-        });
-    </script>
-
-    <!-- LÓGICA -->
-    <script type="module" src="../js/lobby.js"></script>
+<!-- LÓGICA -->
+<script type="module" src="../js/lobby.js"></script>
 
 </body>
 </html>

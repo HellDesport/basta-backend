@@ -28,7 +28,11 @@ let ALLOW_ORIGINS = process.env.CORS_ORIGIN?.split(',')
 
 if (!ALLOW_ORIGINS || ALLOW_ORIGINS.length === 0) ALLOW_ORIGINS = true;
 
-app.use(cors({ origin: ALLOW_ORIGINS, credentials: true }));
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
 app.use(express.json());
 
 /* =======================================================
@@ -46,8 +50,14 @@ app.get('/health', (_req, res) => {
    HTTP + SOCKET.IO
 ======================================================= */
 const server = http.createServer(app);
+
 const io = new IOServer(server, {
-  cors: { origin: ALLOW_ORIGINS }
+  path: "/socket.io",  // ← IMPORTANTE
+  cors: {
+    origin: "*",        // ← A Render le gusta simple
+    methods: ["GET", "POST"],
+    credentials: false  // ← Muy importante para evitar CORS con polling
+  }
 });
 
 app.use((req, _res, next) => { req.io = io; next(); });
