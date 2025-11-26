@@ -43,14 +43,14 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
       });
     }
 
-    // Guardar respuestas
+    // Guardar respuestas del jugador
     const result = await submissionRepo.saveAnswers({
       round,
       playerId: body.playerId,
       answers: validAnswers,
     });
 
-    // Emit básico
+    // Avisar que este jugador ya envió
     req.io.to(game.code).emit('answers:submitted', {
       roundId: round.id,
       playerId: body.playerId,
@@ -69,7 +69,6 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
       `[ROUND CHECK] total=${totalPlayers}, enviados=${submitted}, necesarios=${needed}`
     );
 
-    // Emitir progreso al frontend
     req.io.to(game.code).emit("round:progress", {
       submitted,
       needed,
@@ -81,31 +80,32 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     // ======================================================
     if (submitted >= needed) {
 
+      // Antes de nada, ver estado real de la ronda
+      const latestState = await roundRepo.getRoundState(round.id);
+      if (latestState?.is_finished) {
+        console.warn(`[ROUND FINALIZE] ronda ${round.id} ya estaba finished (pre-check), se ignora cierre duplicado`);
+        return res.status(201).json({ ok: true, ...result });
+      }
+
       let elegant;
 
       try {
-        // ⚠ Aquí ocurría la condición de carrera → doble finalize
+        // Puede pisarse entre varios jugadores, por eso el catch de abajo
         elegant = await submissionRepo.finalizeRound(round, game);
-
       } catch (err) {
-        const msg = String(err?.message || "").toLowerCase();
+        console.error("[ROUND FINALIZE] error en finalizeRound:", err);
 
-        const isDup =
-          err?.code === "ER_DUP_ENTRY" ||
-          msg.includes("duplicate") ||
-          (msg.includes("already") && msg.includes("finished"));
-
-        if (isDup) {
-          console.warn(`[ROUND FINALIZE] ronda ${round.id} ya estaba finalizada, ignore duplicated finalize`);
-          // Ya se emitió round:ended por la primera petición
+        // Releer estado por si otra petición ya la finalizó justo antes del throw
+        const afterState = await roundRepo.getRoundState(round.id);
+        if (afterState?.is_finished) {
+          console.warn(`[ROUND FINALIZE] ronda ${round.id} ya está finished (post-error), se considera cierre exitoso`);
           return res.status(201).json({ ok: true, ...result });
         }
 
-        // Si es un error real, lo escalamos
+        // Si sigue sin marcarse como finished, entonces sí dejamos que el error suba
         throw err;
       }
 
-      // Normalizar puntuaciones
       const cleanTotals = elegant.map(p => ({
         id: p.id,
         name: p.name,
@@ -143,7 +143,7 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
       });
     }
 
-    // Respuesta REST final
+    // Respuesta al cliente REST
     res.status(201).json({ ok: true, ...result });
 
   } catch (e) {
