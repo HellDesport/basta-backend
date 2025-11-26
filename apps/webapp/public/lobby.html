@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es" class="h-full">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Basta — Lobby</title>
+
+    <!-- TAILWIND -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="h-full bg-slate-950 text-slate-200 antialiased flex items-center justify-center p-4">
+
+    <div class="w-full max-w-6xl grid gap-6">
+
+        <!-- HEADER SUPERIOR -->
+        <header
+            class="flex flex-col md:flex-row justify-between items-center bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-4 gap-4 shadow-xl">
+
+            <div class="flex items-center gap-4">
+                <div class="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 flex items-center gap-3">
+                    <span class="text-slate-400 text-xs font-bold tracking-wider uppercase">CÓDIGO DE SALA</span>
+                    <strong id="lblCode" class="text-xl font-mono text-brand-400 tracking-widest">—</strong>
+                </div>
+
+                <div class="flex gap-2">
+                    <span id="lblLobbyStatus"
+                        class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                        Abierto
+                    </span>
+
+                    <span
+                        class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600">
+                        <span id="lblCount">0</span> jugadores
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex gap-3 w-full md:w-auto">
+                <button id="btnCopy"
+                    class="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-lg transition-colors border border-slate-700">
+                    Copiar código
+                </button>
+
+                <button id="btnLeave"
+                    class="flex-1 md:flex-none px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-semibold rounded-lg transition-colors border border-red-500/20">
+                    Salir
+                </button>
+            </div>
+        </header>
+
+        <!-- GRID PRINCIPAL -->
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
+
+            <!-- LISTA DE JUGADORES -->
+            <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col h-[500px]">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                            </path>
+                        </svg>
+                        Jugadores conectados
+                    </h2>
+                    <div class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                </div>
+
+                <div id="players"
+                    class="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                </div>
+            </section>
+
+            <!-- PANEL HOST / PANEL ESPERA -->
+            <aside class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-center">
+
+                <!-- PANEL DEL HOST -->
+                <div id="hostPanel">
+                    <div class="mb-6">
+                        <h2 class="text-xl font-bold text-white mb-1">Configuración</h2>
+                        <p class="text-sm text-slate-400">Personaliza la partida antes de iniciar.</p>
+                    </div>
+
+                    <div class="space-y-5">
+
+                        <!-- Límite de puntos -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Meta de Puntos</label>
+                            <div class="relative">
+                                <select id="selPointLimit"
+                                    class="w-full appearance-none bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
+                                    <option value="1000">1000 puntos</option>
+                                    <option value="1500" selected>1500 puntos</option>
+                                    <option value="2000">2000 puntos</option>
+                                    <option value="2500">2500 puntos</option>
+                                    <option value="3000">3000 puntos</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Límite de rondas -->
+                        <div class="space-y-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Límite de Rondas</label>
+                            <div class="relative">
+                                <select id="selRoundLimit"
+                                    class="w-full appearance-none bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
+                                    <option value="3">3 rondas</option>
+                                    <option value="5" selected>5 rondas</option>
+                                    <option value="7">7 rondas</option>
+                                    <option value="10">10 rondas</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-800 my-4">
+
+                        <!-- Botones -->
+                        <div class="grid grid-cols-1 gap-3">
+                            <button id="btnToggleLock"
+                                class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl transition-colors border border-slate-700">
+                                🔒 Cerrar lobby
+                            </button>
+
+                            <button id="btnStart"
+                                class="w-full py-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition active:scale-95">
+                                🚀 Iniciar partida
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL DE ESPERA PARA JUGADORES -->
+                <div id="waitPanel" class="hidden text-center py-10">
+                    <div
+                        class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                        <svg class="w-8 h-8 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-white mb-2">Esperando al anfitrión</h2>
+                    <p class="text-slate-400">El juego comenzará pronto...</p>
+
+                    <div id="countdown"
+                        class="hidden text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-brand-400 to-purple-500 mt-8 transition-transform">
+                        3
+                    </div>
+                </div>
+
+            </aside>
+        </div>
+    </div>
+
+    <!-- SOCKET -->
+    <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+
+    <!-- DIAG -->
+    <script type="module">
+        import { initDiag } from "../js/diag.js";
+        initDiag({ page: "lobby", apiBase: "", wsUrl: "http://localhost:8080" });
+    </script>
+
+    <!-- LÓGICA -->
+    <script type="module" src="../js/lobby.js"></script>
+
+</body>
+</html>

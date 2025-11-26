@@ -1,0 +1,51 @@
+{
+  "name": "basta-game",
+  "version": "1.0.0",
+  "main": "main.js",
+  "type": "module",
+
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+
+  "build": {
+    "appId": "com.basta.game",
+    "productName": "Basta Game",
+
+    "directories": {
+      "output": "dist"
+    },
+
+    "files": [
+      "main.js",
+      "app/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Basta Game",
+      "uninstallDisplayName": "Basta Game — Uninstaller",
+      "deleteAppDataOnUninstall": true
+    }
+  },
+
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

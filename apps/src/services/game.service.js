@@ -1,0 +1,131 @@
+// src/services/game.service.js
+import dayjs from "dayjs";
+import { makeRoomCode } from "../utils/code.js";
+import * as gameRepo from "../repositories/game.repo.js";
+import * as catRepo from "../repositories/category.repo.js";
+import * as roundRepo from "../repositories/round.repo.js";
+
+/* =======================================================
+   CREAR JUEGO CON HOST
+======================================================= */
+export async function createGameWithHost({
+  hostName,
+  categories = null,
+  durationSec = 60,
+  pointLimit = 1500,
+  roundLimit = 7
+}) {
+  const code = makeRoomCode();
+
+  const game = await gameRepo.createGame({
+    code,
+    pointLimit,
+    roundLimit
+  });
+
+  const host = await gameRepo.addPlayer(game.id, hostName, true);
+
+  const cats = await catRepo.getDefaults();
+  await catRepo.attachToGame(game.id, cats.map(c => c.id));
+
+  return {
+    game,
+    host,
+    categories: cats,
+    durationSec: Number(durationSec),
+    id: game.id,
+    code: game.code,
+    player: host
+  };
+}
+
+/* =======================================================
+   CREAR RONDA
+======================================================= */
+export async function startRound({ gameId, letter, durationSec = 60 }) {
+  const dSec = Number(durationSec) || 60;
+  const L = (letter || randomLetter()).toUpperCase();
+
+  const startsAt = dayjs().toDate();
+  const endsAt = dayjs(startsAt).add(dSec, "second").toDate();
+
+  const round = await roundRepo.createRound({
+    gameId,
+    letter: L,
+    startsAt,
+    endsAt,
+    durationSec: dSec
+  });
+
+  await gameRepo.incrementRoundNumber(gameId);
+
+  const roundNumber = await roundRepo.countRounds(gameId);
+  const categories = await catRepo.listByGame(gameId);
+
+  return {
+    id: round.id,
+    letter: round.letter,
+    secs: Number(round.duration_sec),
+    durationSec: Number(round.duration_sec),
+    endsAt: new Date(round.ends_at).toISOString(),
+    number: roundNumber,
+    categories,
+    roundNumber
+  };
+}
+
+/* =======================================================
+   LETRA RANDOM
+======================================================= */
+function randomLetter() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return letters[Math.floor(Math.random() * letters.length)];
+}
+
+/* =======================================================
+   VERIFICAR FIN DE PARTIDA
+======================================================= */
+export async function checkGameEnd(gameId) {
+  const game = await gameRepo.getGameById(gameId);
+
+  const roundsPlayed = await roundRepo.countRounds(gameId);
+  const scores = await gameRepo.getScores(gameId);
+
+  // Función para normalizar siempre el mismo formato
+  const normalizeWinner = (p) =>
+    p
+      ? {
+          id: p.id,
+          name: p.name,
+          total: Number(p.total) || 0
+        }
+      : null;
+
+  /* ---------- LIMITE DE RONDAS ---------- */
+  if (game.round_limit && roundsPlayed >= game.round_limit) {
+    return {
+      finished: true,
+      reason: "round_limit",
+      winner: normalizeWinner(scores[0]),
+      roundsPlayed
+    };
+  }
+
+  /* ---------- LIMITE DE PUNTOS ---------- */
+  if (game.point_limit) {
+    const winner = scores.find(p => Number(p.total) >= game.point_limit);
+    if (winner) {
+      return {
+        finished: true,
+        reason: "point_limit",
+        winner: normalizeWinner(winner),
+        roundsPlayed
+      };
+    }
+  }
+
+  return {
+    finished: false,
+    roundsPlayed
+  };
+}

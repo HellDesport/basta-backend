@@ -1,0 +1,21 @@
+# Node
+node_modules/
+npm-debug.log
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Electron builder stuff
+*.asar
+*.exe
+*.dll
+*.dmg
+*.zip
+*.7z
