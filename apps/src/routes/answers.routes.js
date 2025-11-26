@@ -153,7 +153,7 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
         roundNumber: nextRound.number,
         categories: nextRound.categories
       });
-    }
+    } 
 
     // ======================================================
     // Respuesta REST

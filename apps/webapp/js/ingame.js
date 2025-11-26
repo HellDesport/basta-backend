@@ -524,7 +524,7 @@ async function submitAnswers() {
   STATE.round.submitted = true;
   btnSubmit.textContent = "Enviando...";
   btnSubmit.disabled = true;
-
+ 
   catsEl.querySelectorAll("input").forEach(i => i.disabled = true);
 
   try {

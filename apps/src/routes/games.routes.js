@@ -197,7 +197,7 @@ gamesRouter.post("/:code/start", async (req, res, next) => {
   }
 });
 
-/* =======================================================
+/* ======================================================= 
    POST /games/:code/players/:id/leave
 ======================================================= */
 gamesRouter.post("/:code/players/:id/leave", async (req, res, next) => {
