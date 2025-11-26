@@ -1,3 +1,5 @@
+// webapp/js/menu.js
+
 // ===============================
 // BACKEND DEPLOYED EN RENDER
 // ===============================
@@ -33,9 +35,7 @@ function persistSession({ game, player, token }) {
   localStorage.setItem("playerId", String(player.id));
   localStorage.setItem("playerName", player.name);
 
-  if (token) {
-    localStorage.setItem("authToken", token);
-  }
+  if (token) localStorage.setItem("authToken", token);
 }
 
 // ------------------------------
@@ -60,7 +60,7 @@ async function api(path, opts = {}) {
 }
 
 // ------------------------------
-// ENDPOINTS limpìos
+// ENDPOINTS limpiazos
 // ------------------------------
 async function createGame(hostName) {
   return api(`/games`, {
@@ -92,7 +92,6 @@ $("#btn-create").addEventListener("click", async () => {
     const data = await createGame(host);
     persistSession(data);
 
-    // 🔥 Ruta correcta para ELECTRON
     window.location.href = `./public/lobby.html?code=${encodeURIComponent(
       data.game.code
     )}`;
@@ -120,7 +119,6 @@ $("#btn-join").addEventListener("click", async () => {
     const data = await joinGame(code.toUpperCase(), name);
     persistSession(data);
 
-    // 🔥 Ruta corregida para desktop (la web usaba /public/)
     window.location.href = `./public/lobby.html?code=${encodeURIComponent(
       data.game.code
     )}`;

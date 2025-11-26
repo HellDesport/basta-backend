@@ -1,4 +1,6 @@
+// ===============================
 // Detectar si estamos dentro de Electron
+// ===============================
 export const isElectron = (() => {
   try {
     return (
@@ -12,40 +14,25 @@ export const isElectron = (() => {
 })();
 
 // ===============================
-// BACKEND REAL EN RAILWAY
-// ⬅️ AJUSTA A TU URL VERDADERA
+// BACKEND REAL (Render)
 // ===============================
-const PROD_API = "https://basta-backend.onrender.com";   // ← ya vi tu URL real en Render
-// Si estuvieras en Railway sería algo como:
-// const PROD_API = "https://basta-backend.up.railway.app";
-
-// Local para pruebas
-const LOCAL_API = "http://localhost:3000";
-
+export const BACKEND_URL = "https://basta-backend-game.onrender.com";
 
 // ===============================
-// API BASE (REST)
+// API
 // ===============================
-export const API_BASE = isElectron
-  ? `${PROD_API}/api`           // ejecutable → SIEMPRE server real
-  : window.location.hostname === "localhost"
-  ? `${LOCAL_API}/api`          // web local → node local
-  : "/api";                     // web desplegado → proxy reverse (Render)
-
+export const API_BASE = `${BACKEND_URL}/api`;
 
 // ===============================
-// SOCKET.IO BASE
+// SOCKET.IO
 // ===============================
-export const SOCKET_URL = isElectron
-  ? PROD_API                    // ejecutable → WebSocket del server real
-  : window.location.hostname === "localhost"
-  ? LOCAL_API                   // web local → WebSocket local
-  : window.location.origin;     // web en hosting → WS del mismo origen
-
+export const SOCKET_URL = BACKEND_URL;
+export const SOCKET_PATH = "/socket.io";
 
 // ===============================
-// Debug opcional
+// Debug
 // ===============================
 console.log("isElectron:", isElectron);
+console.log("BACKEND_URL:", BACKEND_URL);
 console.log("API_BASE:", API_BASE);
 console.log("SOCKET_URL:", SOCKET_URL);

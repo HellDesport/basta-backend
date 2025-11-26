@@ -1,5 +1,5 @@
 // webapp/js/lobby.js
-import { io } from "/socket.io/socket.io.esm.min.js";
+import { SOCKET_URL, SOCKET_PATH } from "./config.js";
 
 // =======================================
 // BACKEND
@@ -49,8 +49,8 @@ lblCode.textContent = gameCode;
 // =======================================
 // WebSocket
 // =======================================
-const socket = io(BACKEND_URL, {
-  path: ioPath,
+const socket = io(SOCKET_URL, {
+  path: SOCKET_PATH,
   transports: ["websocket", "polling"]
 });
 
