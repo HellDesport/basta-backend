@@ -26,47 +26,61 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
 
     round.categories = await roundRepo.getCategoriesOfRound(round.id);
 
+    // ============================================================
+    // 🔥 VALIDACIÓN ANTI-TROLL / ANTI-TRAMPOSOS
+    // ============================================================
     const cleanAnswers = (body.answers || []).map(a => ({
       categoryId: Number(a.categoryId),
       text: (a.text ?? "").trim()
     }));
 
+    // respuestas válidas (texto con mínimo 2 caracteres)
     const validAnswers = cleanAnswers.filter(a =>
-      Number.isInteger(a.categoryId) && a.categoryId > 0
+      Number.isInteger(a.categoryId) &&
+      a.categoryId > 0 &&
+      a.text.length >= 2
     );
 
-    if (validAnswers.length === 0) {
-      return res.status(201).json({
-        ok: true,
-        inserted: 0,
-        warning: "NO_VALID_CATEGORIES"
-      });
+    const totalCats = round.categories.length;
+    const required = Math.ceil(totalCats / 2); // mínimo mitad (6 → 3)
+
+    // Este jugador cuenta como "submitted" solo si cumple el mínimo
+    const countsAsSubmitted = validAnswers.length >= required;
+
+    if (!countsAsSubmitted) {
+      console.log(
+        `Jugador ${body.playerId} NO cumple mínimo (${validAnswers.length}/${required}), NO cuenta como enviado.`
+      );
     }
 
-    // Guardar respuestas del jugador
+    // Aunque no cuente como enviado, SÍ guardamos lo que haya escrito
     const result = await submissionRepo.saveAnswers({
       round,
       playerId: body.playerId,
       answers: validAnswers,
     });
 
-    // Avisar que este jugador ya envió
-    req.io.to(game.code).emit('answers:submitted', {
+    // Avisar que este jugador mandó algo (aunque no cumpla el mínimo)
+    req.io.to(game.code).emit("answers:submitted", {
       roundId: round.id,
       playerId: body.playerId,
       count: result.inserted,
+      valid: countsAsSubmitted
     });
 
     // ======================================================
-    // 📌 Calcular progreso para anti-troll
+    // 📌 Calcular progreso anti-troll REAL
     // ======================================================
-    const totalPlayers = await roundRepo.countPlayersInGame(game.id);
-    const submitted = await submissionRepo.countPlayersSubmitted(round.id);
+    let submitted = await submissionRepo.countPlayersSubmitted(round.id);
 
+    // Si este jugador sí cumple el mínimo → contarlo manualmente
+    if (countsAsSubmitted) submitted++;
+
+    const totalPlayers = await roundRepo.countPlayersInGame(game.id);
     const needed = Math.min(4, Math.ceil(totalPlayers / 2));
 
     console.log(
-      `[ROUND CHECK] total=${totalPlayers}, enviados=${submitted}, necesarios=${needed}`
+      `[ROUND CHECK] total=${totalPlayers}, enviados_validos=${submitted}, necesarios=${needed}`
     );
 
     req.io.to(game.code).emit("round:progress", {
@@ -80,29 +94,27 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     // ======================================================
     if (submitted >= needed) {
 
-      // Antes de nada, ver estado real de la ronda
+      // Pre-check para evitar duplicados
       const latestState = await roundRepo.getRoundState(round.id);
       if (latestState?.is_finished) {
-        console.warn(`[ROUND FINALIZE] ronda ${round.id} ya estaba finished (pre-check), se ignora cierre duplicado`);
+        console.warn(`[ROUND FINALIZE] ronda ${round.id} ya estaba finished (pre-check).`);
         return res.status(201).json({ ok: true, ...result });
       }
 
       let elegant;
 
       try {
-        // Puede pisarse entre varios jugadores, por eso el catch de abajo
         elegant = await submissionRepo.finalizeRound(round, game);
       } catch (err) {
         console.error("[ROUND FINALIZE] error en finalizeRound:", err);
 
-        // Releer estado por si otra petición ya la finalizó justo antes del throw
+        // Post-check por si otra petición ya la cerró
         const afterState = await roundRepo.getRoundState(round.id);
         if (afterState?.is_finished) {
-          console.warn(`[ROUND FINALIZE] ronda ${round.id} ya está finished (post-error), se considera cierre exitoso`);
+          console.warn(`[ROUND FINALIZE] ronda ${round.id} ya terminó (post-error).`);
           return res.status(201).json({ ok: true, ...result });
         }
 
-        // Si sigue sin marcarse como finished, entonces sí dejamos que el error suba
         throw err;
       }
 
@@ -125,7 +137,7 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
         return res.status(201).json({ ok: true, ...result });
       }
 
-      // Crear la siguiente ronda
+      // Nueva ronda
       const nextRound = await gameService.startRound({
         gameId: game.id,
         letter: null,
@@ -143,7 +155,9 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
       });
     }
 
-    // Respuesta al cliente REST
+    // ======================================================
+    // Respuesta REST
+    // ======================================================
     res.status(201).json({ ok: true, ...result });
 
   } catch (e) {
