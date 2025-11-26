@@ -32,7 +32,8 @@
             <div class="flex items-center gap-4">
                 <div class="px-4 py-2 bg-slate-800 rounded-lg border border-slate-700 flex items-center gap-3">
                     <span class="text-slate-400 text-xs font-bold tracking-wider uppercase">CÓDIGO DE SALA</span>
-                    <strong id="lblCode" class="text-xl font-mono text-brand-400 tracking-widest">—</strong>
+                    <strong id="lblCode"
+                        class="text-xl font-mono text-brand-400 tracking-widest">—</strong>
                 </div>
 
                 <div class="flex gap-2">
@@ -86,7 +87,6 @@
             <!-- PANEL HOST / PANEL ESPERA -->
             <aside class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-center">
 
-                <!-- PANEL DEL HOST -->
                 <div id="hostPanel">
                     <div class="mb-6">
                         <h2 class="text-xl font-bold text-white mb-1">Configuración</h2>
@@ -96,7 +96,8 @@
                     <div class="space-y-5">
 
                         <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Meta de Puntos</label>
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Meta de
+                                Puntos</label>
                             <div class="relative">
                                 <select id="selPointLimit"
                                     class="w-full appearance-none bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
@@ -106,7 +107,8 @@
                                     <option value="2500">2500 puntos</option>
                                     <option value="3000">3000 puntos</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                <div
+                                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 9l-7 7-7-7"></path>
@@ -116,7 +118,8 @@
                         </div>
 
                         <div class="space-y-2">
-                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Límite de Rondas</label>
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Límite de
+                                Rondas</label>
                             <div class="relative">
                                 <select id="selRoundLimit"
                                     class="w-full appearance-none bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer">
@@ -125,7 +128,8 @@
                                     <option value="7">7 rondas</option>
                                     <option value="10">10 rondas</option>
                                 </select>
-                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                                <div
+                                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
                                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M19 9l-7 7-7-7"></path>
@@ -150,7 +154,6 @@
                     </div>
                 </div>
 
-                <!-- PANEL DE ESPERA -->
                 <div id="waitPanel" class="hidden text-center py-10">
                     <div
                         class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
@@ -173,25 +176,27 @@
         </div>
     </div>
 
-<!-- SOCKET.IO CLIENT -->
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- SOCKET.IO CLIENT GLOBAL (NECESARIO PARA window.io) -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
-<!-- CONFIG -->
-<script type="module" src="../js/config.js"></script>
+    <!-- CONFIG -->
+    <script type="module" src="../js/config.js"></script>
 
-<!-- DIAGNÓSTICO -->
-<script type="module">
-    import { initDiag } from "../js/diag.js";
-    import { API_BASE, SOCKET_URL } from "../js/config.js";
-    initDiag({
-        page: "lobby",
-        apiBase: API_BASE,
-        wsUrl: SOCKET_URL
-    });
-</script>
+    <!-- DIAGNÓSTICO -->
+    <script type="module">
+        import { initDiag } from "../js/diag.js";
+        import { API_BASE, SOCKET_URL, HEALTH_URL } from "../js/config.js";
 
-<!-- LÓGICA -->
-<script type="module" src="../js/lobby.js"></script>
+        initDiag({
+            page: "lobby",
+            apiBase: API_BASE,
+            wsUrl: SOCKET_URL,
+            healthUrl: HEALTH_URL
+        });
+    </script>
+
+    <!-- LÓGICA -->
+    <script type="module" src="../js/lobby.js"></script>
 
 </body>
 </html>

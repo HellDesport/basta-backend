@@ -1,9 +1,8 @@
 // webapp/js/ingame.js
 import { startConfetti, stopConfetti } from "./confetti.js";
+
 // BACKEND DEPLOYED EN RENDER
 const BACKEND_URL = "https://basta-backend-game.onrender.com";
-
-// API completa
 const API_BASE = `${BACKEND_URL}/api`;
 
 /* =======================================================
@@ -44,7 +43,6 @@ const btnLeave = $("#btnLeave");
 /* =======================================================
    SOCKET
 ======================================================= */
-
 const socket = io(BACKEND_URL, {
   path: "/socket.io",
   transports: ["websocket", "polling"]
@@ -56,7 +54,7 @@ const socket = io(BACKEND_URL, {
 let STATE = {
   gameId,
   players: [],
-  scores: [],   // [{id, name, total}]
+  scores: [],
   me: { id: playerId, name: playerName, score: 0 },
 
   gameLimits: {
@@ -101,7 +99,6 @@ function resetRoundState() {
   };
 }
 
-// normaliza una entrada de score v venga de array o de mapa
 function normalizeScoreEntry(id, value) {
   const numId = Number(id);
   if (!value || typeof value !== "object") {
@@ -112,7 +109,6 @@ function normalizeScoreEntry(id, value) {
     };
   }
 
-  // value es un objeto
   const total = Number(value.total ?? value.score ?? 0) || 0;
   const rawName =
     value.name ||
@@ -120,11 +116,7 @@ function normalizeScoreEntry(id, value) {
     STATE.players.find((p) => p.id === numId)?.name ||
     "Jugador";
 
-  return {
-    id: numId,
-    name: String(rawName),
-    total
-  };
+  return { id: numId, name: String(rawName), total };
 }
 
 /* =======================================================
@@ -134,7 +126,6 @@ function renderPlayers() {
   playersEl.innerHTML = "";
   countBadge.textContent = STATE.players.length;
 
-  // mapa de scores por id para mostrar el total real
   const scoreMap = new Map(STATE.scores.map((s) => [s.id, s.total]));
 
   STATE.players.forEach((p) => {
@@ -168,51 +159,52 @@ function renderRound() {
     : 0;
   roundProgEl.style.width = `${pct}%`;
 
-catsEl.innerHTML = "";
+  catsEl.innerHTML = "";
 
-STATE.round.categories.forEach((cat) => {
-  const div = document.createElement("div");
+  STATE.round.categories.forEach((cat) => {
+    const div = document.createElement("div");
 
-  div.className = `
-    bg-slate-900/40 
-    border border-slate-700 
-    rounded-2xl 
-    p-4 
-    shadow 
-    flex flex-col 
-    gap-2 
-    transform transition 
-    animate-fade-up
-  `;
+    div.className = `
+      bg-slate-900/40 
+      border border-slate-700 
+      rounded-2xl 
+      p-4 
+      shadow 
+      flex flex-col 
+      gap-2 
+      transform transition 
+      animate-fade-up
+    `;
 
-  div.innerHTML = `
-    <label class="text-sm font-semibold text-slate-300">
-      ${escapeHtml(cat.name)}
-    </label>
+    div.innerHTML = `
+      <label class="text-sm font-semibold text-slate-300">
+        ${escapeHtml(cat.name)}
+      </label>
 
-    <input
-      data-catid="${cat.id}"
-      placeholder="${escapeHtml(cat.placeholder || "Escribe tu respuesta")}"
-      autocomplete="off"
-      class="
-        w-full px-4 py-3
-        bg-slate-800/60
-        text-slate-200
-        border border-slate-700
-        rounded-xl
-        placeholder-slate-500
-        focus:outline-none
-        focus:ring-2
-        focus:ring-brand-500/50
-        focus:border-brand-500
-        transition
-        shadow-inner
-      "
-    />
-  `;
+      <input
+        data-catid="${cat.id}"
+        placeholder="${escapeHtml(cat.placeholder || "Escribe tu respuesta")}"
+        autocomplete="off"
+        class="
+          w-full px-4 py-3
+          bg-slate-800/60
+          text-slate-200
+          border border-slate-700
+          rounded-xl
+          placeholder-slate-500
+          focus:outline-none
+          focus:ring-2
+          focus:ring-brand-500/50
+          focus:border-brand-500
+          transition
+          shadow-inner
+        "
+      />
+    `;
 
-  catsEl.appendChild(div);
-});
+    catsEl.appendChild(div);
+  });
+
   setTimeout(() => {
     const first = catsEl.querySelector("input");
     if (first) first.focus();
@@ -224,7 +216,6 @@ STATE.round.categories.forEach((cat) => {
 function renderPodium() {
   podiumEl.innerHTML = "";
 
-  // Normalizar datos
   const cleanScores = STATE.scores
     .map((s) => ({
       id: Number(s.id),
@@ -232,7 +223,7 @@ function renderPodium() {
       total: Number(s.total) || 0,
     }))
     .filter((s) => s.id && s.name)
-    .sort((a, b) => b.total - a.total); // ORDENAR AQUÍ
+    .sort((a, b) => b.total - a.total);
 
   if (cleanScores.length === 0) {
     youScoreEl.textContent = "0";
@@ -259,11 +250,11 @@ function renderPodium() {
     podiumEl.appendChild(row);
   });
 
-  // Actualizar tu puntaje actual
   const my = cleanScores.find((s) => s.id === STATE.me.id)?.total ?? 0;
   STATE.me.score = my;
   youScoreEl.textContent = String(my);
 }
+
 function renderAll() {
   renderPlayers();
   renderRound();
@@ -308,11 +299,8 @@ async function fetchIngame() {
 
     STATE.players = data.players || [];
 
-    // normalizar scores que vengan del /ingame
     if (Array.isArray(data.scores)) {
-      STATE.scores = data.scores.map((s) =>
-        normalizeScoreEntry(s.id, s)
-      );
+      STATE.scores = data.scores.map((s) => normalizeScoreEntry(s.id, s));
     } else if (data.scores && typeof data.scores === "object") {
       STATE.scores = Object.entries(data.scores).map(([id, val]) =>
         normalizeScoreEntry(id, val)
@@ -325,7 +313,10 @@ async function fetchIngame() {
     const mineFromPlayers = STATE.players.find((p) => p.id === STATE.me.id);
 
     STATE.me.score =
-      mineFromScores?.total ?? mineFromPlayers?.total ?? mineFromPlayers?.score ?? 0;
+      mineFromScores?.total ??
+      mineFromPlayers?.total ??
+      mineFromPlayers?.score ??
+      0;
 
     renderAll();
   } catch (e) {
@@ -355,23 +346,24 @@ socket.on("player:left", ({ id }) => {
   renderPlayers();
 });
 
-/* -----------------------------
-   PROGRESO DE ENVÍOS (anti-troll)
------------------------------ */
-socket.on("round:progress", ({ submitted, needed, totalPlayers }) => {
+socket.on("round:progress", ({ submitted, needed }) => {
   const el = document.getElementById("roundProgressText");
   if (!el) return;
-
   el.textContent = `${submitted} / ${needed} jugadores han enviado`;
-  el.style.opacity = "1"; // fade in
+  el.style.opacity = "1";
 });
 
+/* 🔥 NUEVO: actualizar categorías si llegan aparte */
+socket.on("round:categories", (cats) => {
+  STATE.round.categories = Array.isArray(cats) ? cats : [];
+  renderRound();
+});
 
 /* -----------------------------
    RONDA EMPIEZA
 ----------------------------- */
 socket.on("round:started", (p) => {
-  const secs = Number(p.durationSec) || 60;
+  const secs = Number(p.durationSec ?? p.secs) || 60;
 
   STATE.gameLimits.currentRound = Number(
     p.roundNumber ?? STATE.gameLimits.currentRound
@@ -387,11 +379,9 @@ socket.on("round:started", (p) => {
     categories: p.categories || []
   };
 
-    // 🔥 Limpia progreso de envíos
   const el = document.getElementById("roundProgressText");
   if (el) el.style.opacity = "0";
 
-  // 🔥 BOTÓN RESETEADO
   btnSubmit.textContent = "¡BASTA!";
   btnSubmit.disabled = false;
 
@@ -400,19 +390,24 @@ socket.on("round:started", (p) => {
 });
 
 /* -----------------------------
-   RONDA TERMINA
+   RONDA TERMINA (soporta 2 payloads)
 ----------------------------- */
-socket.on("round:ended", ({ scores }) => {
-  console.log("RAW SCORES:", scores);
+socket.on("round:ended", (payload) => {
+  console.log("ROUND ENDED PAYLOAD:", payload);
 
   STATE.round.running = false;
 
+  // Puede venir como { scores: [...] }
+  // o como { results: { scores, duplicates }, nextInSec }
+  let scores = payload.scores;
+  if (!scores && payload.results && Array.isArray(payload.results.scores)) {
+    scores = payload.results.scores;
+  }
+
   if (scores) {
     if (Array.isArray(scores)) {
-      // scores ya viene como array de objetos {id,name,total}
       STATE.scores = scores.map((s) => normalizeScoreEntry(s.id, s));
     } else if (typeof scores === "object") {
-      // scores es un mapa { playerId: total | {total, name,...} }
       STATE.scores = Object.entries(scores).map(([id, val]) =>
         normalizeScoreEntry(id, val)
       );
@@ -430,10 +425,10 @@ socket.on("round:ended", ({ scores }) => {
 /* -----------------------------
    PARTIDA TERMINADA
 ----------------------------- */
-socket.on("game:finished", ({ reason, winner }) => {
+socket.on("game:finished", ({ winner }) => {
   STATE.round.running = false;
 
-  startConfetti(); // 🎉 activar confeti
+  startConfetti();
 
   overlayStart.innerHTML = `
     <div class="flex flex-col items-center justify-center text-center 
@@ -466,7 +461,7 @@ socket.on("game:finished", ({ reason, winner }) => {
   overlayStart.classList.remove("hidden");
 
   document.getElementById("exitBtn").onclick = () => {
-    stopConfetti(); // ❌ detener confeti al salir
+    stopConfetti();
     location.href = "../index_menu.html";
   };
 });
@@ -495,12 +490,12 @@ function collectAnswers() {
   });
   return arr;
 }
+
 async function submitAnswers() {
   if (STATE.round.submitted || !STATE.round.running) return;
 
   STATE.round.submitted = true;
 
-  // 🔥 SOLO ESTOS DOS ESTADOS
   btnSubmit.textContent = "Enviando...";
   btnSubmit.disabled = true;
   catsEl.querySelectorAll("input").forEach((i) => (i.disabled = true));
@@ -513,9 +508,6 @@ async function submitAnswers() {
         answers: collectAnswers()
       }
     });
-
-    // 🔥 YA NO MOSTRAMOS "Enviado ✓"
-    // btnSubmit.textContent = "Enviado ✓"; <-- eliminado
 
   } catch (err) {
     console.error("❌ Error enviando respuestas:", err);

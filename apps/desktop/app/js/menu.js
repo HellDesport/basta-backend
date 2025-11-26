@@ -7,7 +7,7 @@ const BACKEND_URL = "https://basta-backend-game.onrender.com";
 const API_BASE = `${BACKEND_URL}/api`;
 
 // ------------------------------
-// Helpers cortos
+// Helpers
 // ------------------------------
 const $ = (s) => document.querySelector(s);
 
@@ -29,17 +29,15 @@ const isValidName = (name) => {
 // ------------------------------
 // Persistencia local
 // ------------------------------
-function persistSession({ game, player, token }) {
+function persistSession({ game, player }) {
   localStorage.setItem("gameCode", game.code);
   localStorage.setItem("gameId", String(game.id));
   localStorage.setItem("playerId", String(player.id));
   localStorage.setItem("playerName", player.name);
-
-  if (token) localStorage.setItem("authToken", token);
 }
 
 // ------------------------------
-// API WRAPPER universal
+// API WRAPPER
 // ------------------------------
 async function api(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -60,7 +58,7 @@ async function api(path, opts = {}) {
 }
 
 // ------------------------------
-// ENDPOINTS limpiazos
+// ENDPOINTS → versión correcta
 // ------------------------------
 async function createGame(hostName) {
   return api(`/games`, {
@@ -69,10 +67,10 @@ async function createGame(hostName) {
   });
 }
 
-async function joinGame(code, name) {
-  return api(`/games/${encodeURIComponent(code)}/join`, {
+async function joinGame(gameCode, playerName) {
+  return api(`/games/join`, {
     method: "POST",
-    body: { name }
+    body: { gameCode, playerName }
   });
 }
 
@@ -90,7 +88,12 @@ $("#btn-create").addEventListener("click", async () => {
 
   try {
     const data = await createGame(host);
-    persistSession(data);
+
+    // player = data.host
+    persistSession({
+      game: data.game,
+      player: data.host
+    });
 
     window.location.href = `./public/lobby.html?code=${encodeURIComponent(
       data.game.code
@@ -117,7 +120,12 @@ $("#btn-join").addEventListener("click", async () => {
 
   try {
     const data = await joinGame(code.toUpperCase(), name);
-    persistSession(data);
+
+    // player = data.player
+    persistSession({
+      game: data.game,
+      player: data.player
+    });
 
     window.location.href = `./public/lobby.html?code=${encodeURIComponent(
       data.game.code

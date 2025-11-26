@@ -28,7 +28,6 @@ export async function createGameWithHost({
   const cats = await catRepo.getDefaults();
   await catRepo.attachToGame(game.id, cats.map(c => c.id));
 
-  // lista completa de jugadores
   const players = await gameRepo.listPlayers(game.id);
 
   return {
@@ -37,11 +36,11 @@ export async function createGameWithHost({
       id: game.id,
       code: game.code,
       status: game.status,
-      locked: Boolean(game.locked),        // 🔥 nunca null
-      hostId: host.id,                     // 🔥 frontend lo necesita ya sincronizado
+      locked: Boolean(game.locked),
+      hostId: host.id,
       pointLimit: game.point_limit,
       roundLimit: game.round_limit,
-      durationSec: Number(durationSec),    // 🔥 consistente
+      durationSec: Number(durationSec),
       currentRound: game.current_round ?? 0
     },
     players,
@@ -51,15 +50,44 @@ export async function createGameWithHost({
 }
 
 /* =======================================================
-   CREAR RONDA
+   CREAR RONDA — (ACTUALIZADO: letras no repetidas)
 ======================================================= */
 export async function startRound({ gameId, letter, durationSec = 60 }) {
   const dSec = Number(durationSec) || 60;
-  const L = (letter || randomLetter()).toUpperCase();
 
+  // ======================================================
+  // OBTENER LETRAS YA USADAS EN LA PARTIDA
+  // ======================================================
+  const usedLettersRows = await roundRepo.q(
+    `SELECT letter FROM round WHERE game_id = ?`,
+    [gameId]
+  ).catch(() => []); // fallback seguro
+
+  const usedLetters = usedLettersRows?.map(r => r.letter) || [];
+
+  // Alfabeto completo
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  // Filtrar letras disponibles (no repetidas)
+  let available = alphabet.filter(l => !usedLetters.includes(l));
+
+  // Si ya no queda ninguna (muy raro) → reiniciar pool
+  if (available.length === 0) {
+    available = alphabet;
+  }
+
+  // Elegir letra aleatoria permitida
+  const L = letter
+    ? letter.toUpperCase()
+    : available[Math.floor(Math.random() * available.length)];
+
+  // ======================================================
+  // Fechas de inicio/fin
+  // ======================================================
   const startsAt = dayjs().toDate();
   const endsAt = dayjs(startsAt).add(dSec, "second").toDate();
 
+  // Crear ronda
   const round = await roundRepo.createRound({
     gameId,
     letter: L,
@@ -68,9 +96,13 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
     durationSec: dSec
   });
 
+  // Incrementar número de ronda
   await gameRepo.incrementRoundNumber(gameId);
 
+  // Obtener número actualizado
   const roundNumber = await roundRepo.countRounds(gameId);
+
+  // Obtener categorías de la partida
   const categories = await catRepo.listByGame(gameId);
 
   return {
@@ -83,11 +115,6 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
     categories,
     roundNumber
   };
-}
-
-function randomLetter() {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return letters[Math.floor(Math.random() * letters.length)];
 }
 
 /* =======================================================
@@ -146,7 +173,7 @@ export async function joinGame({ gameCode, playerName }) {
       id: game.id,
       code: game.code,
       status: game.status,
-      locked: Boolean(game.locked),           // 🔥 coherencia
+      locked: Boolean(game.locked),
       hostId: host ? host.id : null,
       pointLimit: game.point_limit,
       roundLimit: game.round_limit,
