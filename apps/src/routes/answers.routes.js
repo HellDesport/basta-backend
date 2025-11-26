@@ -23,9 +23,9 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
 
     const round = await roundRepo.getByIdAndGame({ id: roundId, gameId: game.id });
     if (!round) return res.status(404).json({ error: 'ROUND_NOT_FOUND' });
+
     round.categories = await roundRepo.getCategoriesOfRound(round.id);
 
-    
     const cleanAnswers = (body.answers || []).map(a => ({
       categoryId: Number(a.categoryId),
       text: (a.text ?? "").trim()
@@ -63,10 +63,6 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     const totalPlayers = await roundRepo.countPlayersInGame(game.id);
     const submitted = await submissionRepo.countPlayersSubmitted(round.id);
 
-    // Regla dinámica:
-    // - 4 jugadores → 2 necesarios
-    // - 8 jugadores → 4 necesarios
-    // - 12+ jugadores → 4 necesarios
     const needed = Math.min(4, Math.ceil(totalPlayers / 2));
 
     console.log(
@@ -85,9 +81,31 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     // ======================================================
     if (submitted >= needed) {
 
-      // Finalizar ronda con puntuaciones elegantes
-      const elegant = await submissionRepo.finalizeRound(round, game);
+      let elegant;
 
+      try {
+        // ⚠ Aquí ocurría la condición de carrera → doble finalize
+        elegant = await submissionRepo.finalizeRound(round, game);
+
+      } catch (err) {
+        const msg = String(err?.message || "").toLowerCase();
+
+        const isDup =
+          err?.code === "ER_DUP_ENTRY" ||
+          msg.includes("duplicate") ||
+          (msg.includes("already") && msg.includes("finished"));
+
+        if (isDup) {
+          console.warn(`[ROUND FINALIZE] ronda ${round.id} ya estaba finalizada, ignore duplicated finalize`);
+          // Ya se emitió round:ended por la primera petición
+          return res.status(201).json({ ok: true, ...result });
+        }
+
+        // Si es un error real, lo escalamos
+        throw err;
+      }
+
+      // Normalizar puntuaciones
       const cleanTotals = elegant.map(p => ({
         id: p.id,
         name: p.name,
@@ -125,7 +143,7 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
       });
     }
 
-    // Respuesta al cliente REST
+    // Respuesta REST final
     res.status(201).json({ ok: true, ...result });
 
   } catch (e) {
