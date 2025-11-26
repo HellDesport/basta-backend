@@ -378,7 +378,7 @@ STATE.round = {
   submitted: false,
   categories: p.categories || []
 };
-
+ 
 
   const el = document.getElementById("roundProgressText");
   if (el) el.style.opacity = "0";

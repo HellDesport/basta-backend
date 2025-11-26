@@ -161,7 +161,7 @@ export async function getCategoriesOfRound(roundId) {
   return rows;
 }
 
-
+ 
 /* =======================================================
    OBTENER LETRAS YA USADAS DEL JUEGO
 ======================================================= */
