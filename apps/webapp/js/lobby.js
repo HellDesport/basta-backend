@@ -1,16 +1,16 @@
 // webapp/js/lobby.js
 import { io } from "/socket.io/socket.io.esm.min.js";
 
-// ===============================
-// BACKEND EN RENDER (Web + Electron)
-// ===============================
+// =======================================
+// BACKEND
+// =======================================
 const BACKEND_URL = "https://basta-backend-game.onrender.com";
 const API_BASE = `${BACKEND_URL}/api`;
 const ioPath = "/socket.io";
 
-// ===============================
+// =======================================
 // Sesión del jugador
-// ===============================
+// =======================================
 const qs = new URLSearchParams(location.search);
 
 const gameCode   = qs.get("code") || localStorage.getItem("gameCode");
@@ -22,9 +22,9 @@ if (!gameCode || !playerId) {
   location.href = "/index_menu.html";
 }
 
-// ===============================
+// =======================================
 // UI
-// ===============================
+// =======================================
 const $ = (s) => document.querySelector(s);
 
 const playersEl      = $("#players");
@@ -46,17 +46,17 @@ const selRoundLimit  = $("#selRoundLimit");
 
 lblCode.textContent = gameCode;
 
-// ===============================
-// WebSocket (Render)
-// ===============================
+// =======================================
+// WebSocket
+// =======================================
 const socket = io(BACKEND_URL, {
   path: ioPath,
   transports: ["websocket", "polling"]
 });
 
-// ===============================
+// =======================================
 // Estado
-// ===============================
+// =======================================
 let STATE = {
   game: { 
     code: gameCode,
@@ -68,9 +68,9 @@ let STATE = {
   players: []
 };
 
-// ===============================
+// =======================================
 // Helpers
-// ===============================
+// =======================================
 function isHost() {
   if (storedIsHost !== null) return storedIsHost === "true";
   return STATE.game.hostId === playerId;
@@ -86,7 +86,9 @@ function escapeHtml(s) {
   }[c]));
 }
 
+// =======================================
 // Render UI
+// =======================================
 function render() {
   lblLobbyStatus.textContent = STATE.game.locked ? "Cerrado" : "Abierto";
   lblCount.textContent = STATE.players.length;
@@ -106,7 +108,6 @@ function render() {
     playersEl.appendChild(row);
   });
 
-  // Aplicar settings
   if (amIHost) {
     selPointLimit.value = STATE.game.pointLimit;
     selRoundLimit.value = STATE.game.roundLimit;
@@ -115,9 +116,9 @@ function render() {
   btnToggleLock.textContent = STATE.game.locked ? "Abrir lobby" : "Cerrar lobby";
 }
 
-// ===============================
-// API Wrapper
-// ===============================
+// =======================================
+// API
+// =======================================
 async function api(path, opts = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     method: opts.method || "GET",
@@ -126,15 +127,13 @@ async function api(path, opts = {}) {
   });
 
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(json.error || json.message || `HTTP ${res.status}`);
-  }
+  if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
   return json;
 }
 
-// ===============================
+// =======================================
 // Estado inicial
-// ===============================
+// =======================================
 async function fetchState() {
   const data = await api(`/games/${encodeURIComponent(gameCode)}`);
 
@@ -152,9 +151,9 @@ async function fetchState() {
   render();
 }
 
-// ===============================
+// =======================================
 // Acciones de host
-// ===============================
+// =======================================
 async function toggleLock() {
   try {
     await api(`/games/${gameCode}/lock`, {
@@ -193,9 +192,11 @@ async function startGame() {
   }
 }
 
-// ===============================
+// =======================================
 // WebSocket Events
-// ===============================
+// =======================================
+
+// Al conectar, entrar a la sala
 socket.on("connect", () => {
   socket.emit("game:join", {
     code: gameCode,
@@ -204,6 +205,7 @@ socket.on("connect", () => {
   });
 });
 
+// Evento individual (casi no se usa ya)
 socket.on("player:joined", (p) => {
   if (!STATE.players.some((x) => x.id === p.id)) {
     STATE.players.push(p);
@@ -211,34 +213,56 @@ socket.on("player:joined", (p) => {
   }
 });
 
+// === NUEVO: LOBBY COMPLETO ===
+socket.on("lobby:update", ({ players, hostId, locked, pointLimit, roundLimit }) => {
+  console.log("LOBBY UPDATE RECIBIDO", players);
+
+  STATE.players = players || [];
+  STATE.game.hostId = hostId ?? STATE.game.hostId;
+  STATE.game.locked = locked ?? STATE.game.locked;
+  STATE.game.pointLimit = pointLimit ?? STATE.game.pointLimit;
+  STATE.game.roundLimit = roundLimit ?? STATE.game.roundLimit;
+
+  render();
+});
+
+// Jugador salió
+socket.on("player:left", ({ playerId: leftId }) => {
+  STATE.players = STATE.players.filter(p => p.id !== leftId);
+  render();
+});
+
+// Lobby lock
 socket.on("lobby:lock", ({ locked }) => {
   STATE.game.locked = locked;
   render();
 });
 
+// Countdown
 socket.on("game:starting", ({ tMinus }) => {
   hostPanel.classList.add("hidden");
   waitPanel.classList.remove("hidden");
   startCountdown(tMinus);
 });
 
+// Iniciar partida
 socket.on("game:started", ({ gameId }) => {
   localStorage.setItem("gameId", String(gameId));
-  location.href = "./ingame.html";   // <= FIX IMPORTANTE
+  location.href = "./ingame.html";
 });
 
-// ===============================
+// =======================================
 // Polling fallback
-// ===============================
+// =======================================
 fetchState().catch(console.error);
 
 setInterval(() => {
   if (!socket.connected) fetchState().catch(() => {});
 }, 3000);
 
-// ===============================
+// =======================================
 // Eventos UI
-// ===============================
+// =======================================
 btnCopy.addEventListener("click", async () => {
   await navigator.clipboard.writeText(gameCode);
   btnCopy.textContent = "Copiado ✓";
@@ -257,9 +281,9 @@ btnLeave.addEventListener("click", async () => {
 btnToggleLock.addEventListener("click", toggleLock);
 btnStart.addEventListener("click", startGame);
 
-// ===============================
-// Countdown visual
-// ===============================
+// =======================================
+// Countdown
+// =======================================
 function startCountdown(from = 3) {
   countEl.classList.remove("hidden");
   let n = from;

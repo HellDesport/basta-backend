@@ -127,8 +127,24 @@ async function finishRound(roundId) {
 io.on("connection", (socket) => {
   console.log(`🔌 WS conectado: ${socket.id}`);
 
-  socket.on("game:join", ({ code }) => {
+  // 🔥 join con lobby update global
+  socket.on("game:join", async ({ code, playerId }) => {
     socket.join(code);
+
+    const game = await gameRepo.getGameByCode(code);
+    if (!game) return;
+
+    const players = await gameRepo.listPlayers(game.id);
+    const host = players.find(p => p.is_host === 1);
+
+    io.to(code).emit("lobby:update", {
+      players,
+      hostId: host ? host.id : null,
+      locked: Boolean(game.locked),
+      pointLimit: game.point_limit,
+      roundLimit: game.round_limit
+    });
+
     socket.emit("joined", { room: code });
   });
 

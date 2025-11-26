@@ -6,8 +6,8 @@ import { q, pool } from "./db.js";
 ======================================================= */
 export async function createGame({ code, pointLimit, roundLimit }) {
   const [res] = await pool.query(
-    `INSERT INTO game (code, status, point_limit, round_limit, current_round)
-     VALUES (?, 'lobby', ?, ?, 0)`,
+    `INSERT INTO game (code, status, point_limit, round_limit, current_round, locked)
+     VALUES (?, 'lobby', ?, ?, 0, 0)`,
     [code, pointLimit, roundLimit]
   );
 
@@ -38,7 +38,7 @@ export async function getGameById(id) {
 }
 
 /* =======================================================
-   AGREGAR JUGADOR (sin duplicados + normalizado)
+   AGREGAR JUGADOR
 ======================================================= */
 export async function addPlayer(gameId, name, isHost = false) {
   const cleanName = name.trim();
@@ -62,13 +62,11 @@ export async function addPlayer(gameId, name, isHost = false) {
 }
 
 /* =======================================================
-   REMOVER JUGADOR
+   REMOVER JUGADOR — versión segura
 ======================================================= */
-export async function removePlayer(gameId, playerId) {
-  await q(
-    `DELETE FROM player WHERE id = ? AND game_id = ?`,
-    [playerId, gameId]
-  );
+export async function removePlayer(playerId) {
+  // ❗ Ahora se elimina solo por ID
+  await q(`DELETE FROM player WHERE id = ?`, [playerId]);
 }
 
 /* =======================================================
@@ -76,10 +74,11 @@ export async function removePlayer(gameId, playerId) {
 ======================================================= */
 export async function listPlayers(gameId) {
   return q(
-    `SELECT id, name, is_host, score
-       FROM player
-      WHERE game_id = ?
-      ORDER BY is_host DESC, name ASC`,
+    `SELECT 
+        id, name, is_host, score
+     FROM player
+     WHERE game_id = ?
+     ORDER BY is_host DESC, name ASC`,
     [gameId]
   );
 }

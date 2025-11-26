@@ -16,6 +16,15 @@ gamesRouter.post("/", async (req, res, next) => {
   try {
     const body = CreateGameSchema.parse(req.body);
     const data = await gameService.createGameWithHost(body);
+
+    req.io.to(data.game.code).emit("lobby:update", {
+      players: data.players,
+      hostId: data.game.hostId,
+      locked: Boolean(data.game.locked),
+      pointLimit: data.game.pointLimit,
+      roundLimit: data.game.roundLimit
+    });
+
     res.status(201).json(data);
   } catch (e) {
     next(e);
@@ -23,7 +32,7 @@ gamesRouter.post("/", async (req, res, next) => {
 });
 
 /* =======================================================
-   POST /games/:code/settings → Actualizar límite de puntos y rondas
+   POST /games/:code/settings → Cambiar límites
 ======================================================= */
 gamesRouter.post("/:code/settings", async (req, res, next) => {
   try {
@@ -31,13 +40,22 @@ gamesRouter.post("/:code/settings", async (req, res, next) => {
     const { pointLimit, roundLimit } = req.body;
 
     const game = await gameRepo.getGameByCode(code);
-    if (!game) {
-      return res.status(404).json({ error: "GAME_NOT_FOUND" });
-    }
+    if (!game) return res.status(404).json({ error: "GAME_NOT_FOUND" });
 
     await gameRepo.updateGame(game.id, {
       point_limit: Number(pointLimit),
       round_limit: Number(roundLimit)
+    });
+
+    const players = await gameRepo.listPlayers(game.id);
+    const host = players.find((p) => p.is_host === 1);
+
+    req.io.to(code).emit("lobby:update", {
+      players,
+      hostId: host ? host.id : null,
+      locked: Boolean(game.locked),
+      pointLimit,
+      roundLimit
     });
 
     res.json({ ok: true });
@@ -47,12 +65,21 @@ gamesRouter.post("/:code/settings", async (req, res, next) => {
 });
 
 /* =======================================================
-   POST /games/join → Unirse a una sala existente
+   POST /games/join → Unirse
 ======================================================= */
 gamesRouter.post("/join", async (req, res, next) => {
   try {
     const body = JoinSchema.parse(req.body);
-    const data = await gameService.joinGame(body); // o join(), según tu service
+    const data = await gameService.joinGame(body);
+
+    req.io.to(data.game.code).emit("lobby:update", {
+      players: data.players,
+      hostId: data.game.hostId,
+      locked: Boolean(data.game.locked),
+      pointLimit: data.game.pointLimit,
+      roundLimit: data.game.roundLimit
+    });
+
     res.json(data);
   } catch (e) {
     next(e);
@@ -60,25 +87,7 @@ gamesRouter.post("/join", async (req, res, next) => {
 });
 
 /* =======================================================
-   GET /games/:code/categories
-======================================================= */
-gamesRouter.get("/:code/categories", async (req, res, next) => {
-  try {
-    const code = req.params.code.toUpperCase();
-
-    const game = await gameRepo.getGameByCode(code);
-    if (!game) return res.status(404).json({ error: "GAME_NOT_FOUND" });
-
-    const categories = await catRepo.listByGame(game.id);
-    res.json({ categories });
-
-  } catch (e) {
-    next(e);
-  }
-});
-
-/* =======================================================
-   GET /games/:code → Estado lobby
+   GET /games/:code → Lobby completo
 ======================================================= */
 gamesRouter.get("/:code", async (req, res, next) => {
   try {
@@ -95,7 +104,7 @@ gamesRouter.get("/:code", async (req, res, next) => {
         id: game.id,
         code: game.code,
         status: game.status,
-        locked: game.locked ?? false,
+        locked: Boolean(game.locked),
         hostId: host ? host.id : null,
         pointLimit: game.point_limit,
         roundLimit: game.round_limit,
@@ -111,7 +120,7 @@ gamesRouter.get("/:code", async (req, res, next) => {
 });
 
 /* =======================================================
-   GET /games/:code/ingame (VERSIÓN BLINDADA)
+   GET /games/:code/ingame
 ======================================================= */
 gamesRouter.get("/:code/ingame", async (req, res, next) => {
   try {
@@ -122,7 +131,6 @@ gamesRouter.get("/:code/ingame", async (req, res, next) => {
 
     const players = await gameRepo.listPlayers(game.id);
 
-    // Ronda activa
     const round = await roundRepo.getActiveRound(game.id);
     let roundPayload = null;
 
@@ -131,27 +139,21 @@ gamesRouter.get("/:code/ingame", async (req, res, next) => {
 
       const endsAt = round.ends_at ? new Date(round.ends_at) : null;
       const now = new Date();
-      let left = 0;
+      let left = endsAt ? Math.floor((endsAt - now) / 1000) : 0;
+      if (!Number.isFinite(left)) left = 0;
 
-      if (endsAt instanceof Date && !isNaN(endsAt)) {
-        left = Math.floor((endsAt - now) / 1000);
-        if (!Number.isFinite(left)) left = 0;
-      }
-
-      const secs = Number(round.duration_sec);
-      const safeSecs = Number.isFinite(secs) ? secs : 60;
+      const secs = Number(round.duration_sec) || 60;
 
       roundPayload = {
         id: round.id,
         letter: round.letter || "A",
-        secs: safeSecs,
-        left: left < 0 ? 0 : left,
+        secs,
+        left: Math.max(left, 0),
         running: left > 0,
         categories
       };
     }
 
-    // Puntajes + rondas jugadas
     const scores = await gameRepo.getScores(game.id);
     const totalRounds = await roundRepo.countRounds(game.id);
 
@@ -173,7 +175,7 @@ gamesRouter.get("/:code/ingame", async (req, res, next) => {
 });
 
 /* =======================================================
-   POST /games/:code/start → Iniciar cuenta regresiva
+   POST /games/:code/start
 ======================================================= */
 gamesRouter.post("/:code/start", async (req, res, next) => {
   try {
@@ -206,9 +208,19 @@ gamesRouter.post("/:code/players/:id/leave", async (req, res, next) => {
     const game = await gameRepo.getGameByCode(code);
     if (!game) return res.status(404).json({ error: "GAME_NOT_FOUND" });
 
-    await gameRepo.removePlayer(game.id, playerId);
+    // 🔥 removePlayer ahora recibe SOLO playerId
+    await gameRepo.removePlayer(playerId);
 
-    req.io.to(code).emit("player:left", { id: playerId });
+    const players = await gameRepo.listPlayers(game.id);
+    const host = players.find((p) => p.is_host === 1);
+
+    req.io.to(code).emit("lobby:update", {
+      players,
+      hostId: host ? host.id : null,
+      locked: Boolean(game.locked),
+      pointLimit: game.point_limit,
+      roundLimit: game.round_limit
+    });
 
     res.json({ ok: true });
 
@@ -216,4 +228,3 @@ gamesRouter.post("/:code/players/:id/leave", async (req, res, next) => {
     next(e);
   }
 });
-

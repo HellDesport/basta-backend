@@ -28,14 +28,25 @@ export async function createGameWithHost({
   const cats = await catRepo.getDefaults();
   await catRepo.attachToGame(game.id, cats.map(c => c.id));
 
+  // lista completa de jugadores
+  const players = await gameRepo.listPlayers(game.id);
+
   return {
-    game,
+    ok: true,
+    game: {
+      id: game.id,
+      code: game.code,
+      status: game.status,
+      locked: Boolean(game.locked),        // 🔥 nunca null
+      hostId: host.id,                     // 🔥 frontend lo necesita ya sincronizado
+      pointLimit: game.point_limit,
+      roundLimit: game.round_limit,
+      durationSec: Number(durationSec),    // 🔥 consistente
+      currentRound: game.current_round ?? 0
+    },
+    players,
     host,
-    categories: cats,
-    durationSec: Number(durationSec),
-    id: game.id,
-    code: game.code,
-    player: host
+    categories: cats
   };
 }
 
@@ -74,34 +85,23 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
   };
 }
 
-/* =======================================================
-   LETRA RANDOM
-======================================================= */
 function randomLetter() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   return letters[Math.floor(Math.random() * letters.length)];
 }
 
 /* =======================================================
-   VERIFICAR FIN DE PARTIDA
+   FIN DE PARTIDA
 ======================================================= */
 export async function checkGameEnd(gameId) {
   const game = await gameRepo.getGameById(gameId);
 
   const roundsPlayed = await roundRepo.countRounds(gameId);
-  const scores = await gameRepo.getScores(gameId);
+  const scores = await gameRepo.getScores(game.id);
 
-  // Función para normalizar siempre el mismo formato
   const normalizeWinner = (p) =>
-    p
-      ? {
-          id: p.id,
-          name: p.name,
-          total: Number(p.total) || 0
-        }
-      : null;
+    p ? { id: p.id, name: p.name, total: Number(p.total) || 0 } : null;
 
-  /* ---------- LIMITE DE RONDAS ---------- */
   if (game.round_limit && roundsPlayed >= game.round_limit) {
     return {
       finished: true,
@@ -111,7 +111,6 @@ export async function checkGameEnd(gameId) {
     };
   }
 
-  /* ---------- LIMITE DE PUNTOS ---------- */
   if (game.point_limit) {
     const winner = scores.find(p => Number(p.total) >= game.point_limit);
     if (winner) {
@@ -124,32 +123,22 @@ export async function checkGameEnd(gameId) {
     }
   }
 
-  return {
-    finished: false,
-    roundsPlayed
-  };
+  return { finished: false, roundsPlayed };
 }
 
-
 /* =======================================================
-   UNIRSE A UN JUEGO EXISTENTE
+   UNIRSE A UN JUEGO
 ======================================================= */
 export async function joinGame({ gameCode, playerName }) {
   const code = gameCode.toUpperCase();
 
   const game = await gameRepo.getGameByCode(code);
-  if (!game) {
-    return {
-      ok: false,
-      error: "GAME_NOT_FOUND"
-    };
-  }
+  if (!game) return { ok: false, error: "GAME_NOT_FOUND" };
 
-  // Agregar jugador
   const player = await gameRepo.addPlayer(game.id, playerName, false);
-
-  // Obtener jugadores actuales
   const players = await gameRepo.listPlayers(game.id);
+
+  const host = players.find(p => p.is_host === 1);
 
   return {
     ok: true,
@@ -157,6 +146,8 @@ export async function joinGame({ gameCode, playerName }) {
       id: game.id,
       code: game.code,
       status: game.status,
+      locked: Boolean(game.locked),           // 🔥 coherencia
+      hostId: host ? host.id : null,
       pointLimit: game.point_limit,
       roundLimit: game.round_limit,
       durationSec: game.duration_sec ?? 60,
