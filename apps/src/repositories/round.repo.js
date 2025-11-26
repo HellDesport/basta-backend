@@ -160,3 +160,18 @@ export async function getCategoriesOfRound(roundId) {
 
   return rows;
 }
+
+
+/* =======================================================
+   OBTENER LETRAS YA USADAS DEL JUEGO
+======================================================= */
+export async function getUsedLetters(gameId) {
+  const rows = await q(
+    `SELECT letter
+       FROM round
+      WHERE game_id = ?`,
+    [gameId]
+  );
+
+  return rows.map(r => r.letter);
+}

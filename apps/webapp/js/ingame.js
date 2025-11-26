@@ -369,15 +369,16 @@ socket.on("round:started", (p) => {
     p.roundNumber ?? STATE.gameLimits.currentRound
   );
 
-  STATE.round = {
-    id: p.roundId,
-    letter: p.letter,
-    secs,
-    left: secs,
-    running: true,
-    submitted: false,
-    categories: p.categories || []
-  };
+STATE.round = {
+  id: p.roundId ?? p.id ?? p.round?.id ?? null,
+  letter: p.letter,
+  secs,
+  left: secs,
+  running: true,
+  submitted: false,
+  categories: p.categories || []
+};
+
 
   const el = document.getElementById("roundProgressText");
   if (el) el.style.opacity = "0";
@@ -491,47 +492,52 @@ function collectAnswers() {
   return arr;
 }
 
+// Validación mínima: requiere al menos 3 respuestas con texto
+function validateAnswers() {
+  const inputs = [...catsEl.querySelectorAll("input[data-catid]")];
+  const nonEmpty = inputs.filter((i) => i.value.trim() !== "");
+
+  if (nonEmpty.length >= 3) return true;
+
+  // Marcar visualmente (rojo + vibración)
+  inputs.forEach((i) => {
+    if (!i.value.trim()) {
+      i.classList.add("ring-2", "ring-red-600");
+      i.style.animation = "shake 0.2s";
+
+      setTimeout(() => {
+        i.style.animation = "";
+        i.classList.remove("ring-red-600");
+      }, 300);
+    }
+  });
+
+  return false;
+}
+
 async function submitAnswers() {
-  if (!STATE.round.running) return;
-  if (STATE.round.submitted) return;
+  if (!STATE.round.running || STATE.round.submitted) return;
 
-  const answers = collectAnswers();
+  // Validar antes de enviar
+  if (!validateAnswers()) return;
 
-  // Contar respuestas reales (mínimo 2 caracteres)
-  const valid = answers.filter(a => a.text.trim().length >= 2);
-  const required = Math.ceil(STATE.round.categories.length / 2);
-
-  const warningEl = document.getElementById("bastaWarning");
-
-  // 🔥 Si el jugador no cumple el mínimo
-  if (valid.length < required) {
-
-    warningEl.textContent = `Debes enviar mínimo ${required} respuestas (llevas ${valid.length}).`;
-
-    warningEl.classList.remove("opacity-0");
-    warningEl.classList.add("opacity-100");
-
-    // Desvanecer después de 2s
-    setTimeout(() => {
-      warningEl.classList.remove("opacity-100");
-      warningEl.classList.add("opacity-0");
-    }, 2000);
-
-    return; // ⛔ NO enviamos al backend
-  }
-
-  // Enviar normalmente
   STATE.round.submitted = true;
+
   btnSubmit.textContent = "Enviando...";
   btnSubmit.disabled = true;
- 
-  catsEl.querySelectorAll("input").forEach(i => i.disabled = true);
+  catsEl.querySelectorAll("input").forEach((i) => (i.disabled = true));
 
   try {
     await api(`/games/${gameCode}/rounds/${STATE.round.id}/answers`, {
       method: "POST",
-      body: { playerId, answers }
+      body: {
+        playerId,
+        answers: collectAnswers()
+      }
     });
+
+    btnSubmit.textContent = "Enviado ✓";
+
   } catch (err) {
     console.error("❌ Error enviando respuestas:", err);
     btnSubmit.textContent = "Error";

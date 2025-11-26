@@ -50,44 +50,39 @@ export async function createGameWithHost({
 }
 
 /* =======================================================
-   CREAR RONDA — (ACTUALIZADO: letras no repetidas)
+   CREAR RONDA — LETRAS NO REPETIDAS (PARCHADO)
 ======================================================= */
 export async function startRound({ gameId, letter, durationSec = 60 }) {
   const dSec = Number(durationSec) || 60;
 
   // ======================================================
-  // OBTENER LETRAS YA USADAS EN LA PARTIDA
+  // OBTENER LETRAS YA USADAS EN LA PARTIDA (método real)
   // ======================================================
-  const usedLettersRows = await roundRepo.q(
-    `SELECT letter FROM round WHERE game_id = ?`,
-    [gameId]
-  ).catch(() => []); // fallback seguro
+  let usedLetters = [];
+  try {
+    usedLetters = await roundRepo.getUsedLetters(gameId);
+  } catch (err) {
+    usedLetters = [];
+  }
 
-  const usedLetters = usedLettersRows?.map(r => r.letter) || [];
-
-  // Alfabeto completo
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-  // Filtrar letras disponibles (no repetidas)
   let available = alphabet.filter(l => !usedLetters.includes(l));
 
-  // Si ya no queda ninguna (muy raro) → reiniciar pool
   if (available.length === 0) {
     available = alphabet;
   }
 
-  // Elegir letra aleatoria permitida
   const L = letter
     ? letter.toUpperCase()
     : available[Math.floor(Math.random() * available.length)];
 
   // ======================================================
-  // Fechas de inicio/fin
+  // Fechas
   // ======================================================
   const startsAt = dayjs().toDate();
   const endsAt = dayjs(startsAt).add(dSec, "second").toDate();
 
-  // Crear ronda
+  // Crear ronda en DB
   const round = await roundRepo.createRound({
     gameId,
     letter: L,
@@ -96,13 +91,9 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
     durationSec: dSec
   });
 
-  // Incrementar número de ronda
   await gameRepo.incrementRoundNumber(gameId);
 
-  // Obtener número actualizado
   const roundNumber = await roundRepo.countRounds(gameId);
-
-  // Obtener categorías de la partida
   const categories = await catRepo.listByGame(gameId);
 
   return {
@@ -184,4 +175,3 @@ export async function joinGame({ gameCode, playerName }) {
     players
   };
 }
- 

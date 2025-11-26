@@ -491,8 +491,34 @@ function collectAnswers() {
   return arr;
 }
 
+// Validación mínima: requiere al menos 3 respuestas con texto
+function validateAnswers() {
+  const inputs = [...catsEl.querySelectorAll("input[data-catid]")];
+  const nonEmpty = inputs.filter((i) => i.value.trim() !== "");
+
+  if (nonEmpty.length >= 3) return true;
+
+  // Marcar visualmente (rojo + vibración)
+  inputs.forEach((i) => {
+    if (!i.value.trim()) {
+      i.classList.add("ring-2", "ring-red-600");
+      i.style.animation = "shake 0.2s";
+
+      setTimeout(() => {
+        i.style.animation = "";
+        i.classList.remove("ring-red-600");
+      }, 300);
+    }
+  });
+
+  return false;
+}
+
 async function submitAnswers() {
-  if (STATE.round.submitted || !STATE.round.running) return;
+  if (!STATE.round.running || STATE.round.submitted) return;
+
+  // Validar antes de enviar
+  if (!validateAnswers()) return;
 
   STATE.round.submitted = true;
 
@@ -508,6 +534,8 @@ async function submitAnswers() {
         answers: collectAnswers()
       }
     });
+
+    btnSubmit.textContent = "Enviado ✓";
 
   } catch (err) {
     console.error("❌ Error enviando respuestas:", err);
