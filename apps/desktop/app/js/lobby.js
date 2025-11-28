@@ -19,7 +19,7 @@ const playerName = localStorage.getItem("playerName");
 const storedIsHost = localStorage.getItem("isHost");
 
 if (!gameCode || !playerId) {
-  location.href = "/index_menu.html";
+  location.href = "../index_menu.html";
 }
 
 // =======================================
@@ -275,7 +275,7 @@ btnLeave.addEventListener("click", async () => {
       method: "POST"
     });
   } catch {}
-  location.href = "/index_menu.html";
+  location.href = "../index_menu.html";
 });
 
 btnToggleLock.addEventListener("click", toggleLock);

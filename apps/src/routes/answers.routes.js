@@ -27,18 +27,18 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     round.categories = await roundRepo.getCategoriesOfRound(round.id);
 
     // ============================================================
-    // 🔥 VALIDACIÓN ANTI-TROLL / ANTI-TRAMPOSOS
+    // 🍑 VALIDACIÓN ANTI-TROLL / ANTI-TRAMPOSOS
     // ============================================================
     const cleanAnswers = (body.answers || []).map(a => ({
       categoryId: Number(a.categoryId),
       text: (a.text ?? "").trim()
     }));
 
-    // respuestas válidas (texto con mínimo 2 caracteres)
+    // respuestas válidas: basta con que no estén vacías (1 letra cuenta)
     const validAnswers = cleanAnswers.filter(a =>
       Number.isInteger(a.categoryId) &&
       a.categoryId > 0 &&
-      a.text.length >= 2
+      a.text.length >= 1   // 👈 antes pedía 2, ahora solo no vacío
     );
 
     const totalCats = round.categories.length;
@@ -52,7 +52,6 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
         `Jugador ${body.playerId} NO cumple mínimo (${validAnswers.length}/${required}), NO cuenta como enviado.`
       );
     }
-
     // Aunque no cuente como enviado, SÍ guardamos lo que haya escrito
     const result = await submissionRepo.saveAnswers({
       round,
@@ -72,10 +71,6 @@ answersRouter.post('/games/:code/rounds/:roundId/answers', async (req, res, next
     // 📌 Calcular progreso anti-troll REAL
     // ======================================================
     let submitted = await submissionRepo.countPlayersSubmitted(round.id);
-
-    // Si este jugador sí cumple el mínimo → contarlo manualmente
-    if (countsAsSubmitted) submitted++;
-
     const totalPlayers = await roundRepo.countPlayersInGame(game.id);
     const needed = Math.min(4, Math.ceil(totalPlayers / 2));
 
