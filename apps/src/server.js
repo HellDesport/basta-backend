@@ -12,7 +12,6 @@ import { answersRouter } from './routes/answers.routes.js';
 import * as submissionRepo from './repositories/submission.repo.js';
 import * as roundRepo from './repositories/round.repo.js';
 import * as gameRepo from './repositories/game.repo.js';
-import * as playerRepo from './repositories/player.repo.js';
 
 // servicios
 import * as gameService from './services/game.service.js';
@@ -36,10 +35,6 @@ app.use(cors({
 app.use(express.json());
 
 /* =======================================================
-   NADA DE ARCHIVOS ESTÁTICOS (Este backend no sirve HTML)
-======================================================= */
-
-/* =======================================================
    HEALTHCHECK
 ======================================================= */
 app.get('/health', (_req, res) => {
@@ -52,11 +47,11 @@ app.get('/health', (_req, res) => {
 const server = http.createServer(app);
 
 const io = new IOServer(server, {
-  path: "/socket.io",  // ← IMPORTANTE
+  path: "/socket.io",
   cors: {
-    origin: "*",        // ← A Render le gusta simple
+    origin: "*",
     methods: ["GET", "POST"],
-    credentials: false  // ← Muy importante para evitar CORS con polling
+    credentials: false
   }
 });
 
@@ -68,9 +63,48 @@ app.use((req, _res, next) => { req.io = io; next(); });
 app.use('/api/games', gamesRouter);
 app.use('/api', roundsRouter);
 app.use('/api', answersRouter);
+/* =======================================================================
+   TIMERS POR RONDA (motor del juego)
+   → Se crea un timer por cada roundId
+   → Al llegar a 0 → finishRound()
+   → Cada tick emite round:countdown
+======================================================================= */
+const ROUND_TIMERS = new Map();
+
+async function startRoundTimer(round) {
+  const roundId = round.id;
+  const game = await gameRepo.getGameById(round.game_id);
+  if (!game) return;
+
+  const room = game.code;
+
+  let timeLeft = Number(round.duration_sec);
+  if (!timeLeft || timeLeft <= 0) timeLeft = 60;
+
+  // Si ya existía el timer, lo limpiamos
+  if (ROUND_TIMERS.has(roundId)) {
+    clearInterval(ROUND_TIMERS.get(roundId));
+    ROUND_TIMERS.delete(roundId);
+  }
+
+  const interval = setInterval(async () => {
+    timeLeft--;
+
+    io.to(room).emit("round:countdown", { roundId, timeLeft });
+
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      ROUND_TIMERS.delete(roundId);
+
+      await finishRound(roundId);
+    }
+  }, 1000);
+
+  ROUND_TIMERS.set(roundId, interval);
+}
 
 /* =======================================================
-   FINALIZAR + SIGUIENTE RONDA
+   FINALIZAR RONDA
 ======================================================= */
 async function finishRound(roundId) {
   try {
@@ -126,6 +160,15 @@ async function finishRound(roundId) {
       nextInSec: 5
     });
 
+    // Revisión: ¿se terminó la partida?
+    const end = await gameService.checkGameEnd(game.id);
+    if (end.finished) {
+      io.to(game.code).emit("game:finished", {
+        winner: end.winner,
+        reason: end.reason
+      });
+    }
+
   } catch (err) {
     console.error("❌ finishRound error:", err);
   }
@@ -137,7 +180,6 @@ async function finishRound(roundId) {
 io.on("connection", (socket) => {
   console.log(`🔌 WS conectado: ${socket.id}`);
 
-  // 🔥 join con lobby update global
   socket.on("game:join", async ({ code, playerId }) => {
     socket.join(code);
 
@@ -194,21 +236,11 @@ io.on("connection", (socket) => {
 });
 
 /* =======================================================
-   WATCHDOGS (DESACTIVADOS TEMPORALMENTE)
+   PATCH: cuando se crea ronda → iniciar temporizador
 ======================================================= */
-
-// ❌ Este era el que hacía explotar Render
-// setInterval(async () => {
-//   try {
-//     const expired = await roundRepo.getExpiredRounds();
-//     for (const r of expired) finishRound(r.id);
-//   } catch (err) {
-//     console.error("❌ Error watchdog rondas:", err);
-//   }
-// }, 1000);
-
-// ❌ Este también pausa por ahora
-// setInterval(checkEmptyGames, 5000);
+roundRepo.onRoundCreated = async (round) => {
+  await startRoundTimer(round);
+};
 
 /* =======================================================
    INICIO SERVER

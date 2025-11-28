@@ -50,35 +50,27 @@ export async function createGameWithHost({
 }
 
 /* =======================================================
-   CREAR RONDA — LETRAS NO REPETIDAS (PARCHADO)
+   CREAR RONDA — LETRAS NO REPETIDAS
 ======================================================= */
 export async function startRound({ gameId, letter, durationSec = 60 }) {
   const dSec = Number(durationSec) || 60;
 
-  // ======================================================
-  // OBTENER LETRAS YA USADAS EN LA PARTIDA (método real)
-  // ======================================================
+  // Obtener letras usadas
   let usedLetters = [];
   try {
     usedLetters = await roundRepo.getUsedLetters(gameId);
-  } catch (err) {
+  } catch {
     usedLetters = [];
   }
 
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   let available = alphabet.filter(l => !usedLetters.includes(l));
-
-  if (available.length === 0) {
-    available = alphabet;
-  }
+  if (available.length === 0) available = alphabet;
 
   const L = letter
     ? letter.toUpperCase()
     : available[Math.floor(Math.random() * available.length)];
 
-  // ======================================================
-  // Fechas
-  // ======================================================
   const startsAt = dayjs().toDate();
   const endsAt = dayjs(startsAt).add(dSec, "second").toDate();
 
@@ -96,15 +88,18 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
   const roundNumber = await roundRepo.countRounds(gameId);
   const categories = await catRepo.listByGame(gameId);
 
+  // 🔥 DEVOLVER OBJETO COMPLETO Y COHERENTE
   return {
     id: round.id,
+    gameId: round.game_id,           // ✔ necesario para server.js
     letter: round.letter,
     secs: Number(round.duration_sec),
     durationSec: Number(round.duration_sec),
+    startsAt: round.starts_at,
     endsAt: new Date(round.ends_at).toISOString(),
     number: roundNumber,
-    categories,
-    roundNumber
+    roundNumber,
+    categories
   };
 }
 
@@ -119,7 +114,7 @@ export async function checkGameEnd(gameId) {
 
   const normalizeWinner = (p) =>
     p ? { id: p.id, name: p.name, total: Number(p.total) || 0 } : null;
-
+ 
   if (game.round_limit && roundsPlayed >= game.round_limit) {
     return {
       finished: true,
@@ -175,4 +170,3 @@ export async function joinGame({ gameCode, playerName }) {
     players
   };
 }
- 

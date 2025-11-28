@@ -370,7 +370,7 @@ socket.on("round:started", (p) => {
   );
 
   STATE.round = {
-    id: p.roundId,
+    id: p.roundId ?? p.id ?? p.round?.id ?? null,
     letter: p.letter,
     secs,
     left: secs,
@@ -390,12 +390,32 @@ socket.on("round:started", (p) => {
 });
 
 /* -----------------------------
+   NUEVO: COUNTDOWN DEL SERVIDOR
+----------------------------- */
+socket.on("round:countdown", ({ roundId, timeLeft }) => {
+  // Si por algún motivo llega de otra ronda, lo ignoramos
+  if (STATE.round.id && roundId && STATE.round.id !== roundId) return;
+
+  STATE.round.left = Math.max(0, Number(timeLeft) || 0);
+
+  roundTimeEl.textContent = fmt(STATE.round.left);
+
+  const pct = STATE.round.secs
+    ? Math.max(0, Math.min(100, (STATE.round.left / STATE.round.secs) * 100))
+    : 0;
+
+  roundProgEl.style.width = `${pct}%`;
+});
+
+/* -----------------------------
    RONDA TERMINA (soporta 2 payloads)
 ----------------------------- */
 socket.on("round:ended", (payload) => {
   console.log("ROUND ENDED PAYLOAD:", payload);
 
   STATE.round.running = false;
+  STATE.round.left = 0;
+  roundProgEl.style.width = "0%";
 
   // Puede venir como { scores: [...] }
   // o como { results: { scores, duplicates }, nextInSec }
@@ -445,13 +465,13 @@ socket.on("game:finished", ({ winner }) => {
             ${escapeHtml(winner.name)}
         </p>
 
-        <div class="text-4xl font-black text-white mb-6">
+        <div class="text-4xl font-black text.white mb-6">
             ${winner.total} <span class="text-sm font-semibold text-slate-400">puntos</span>
         </div>
 
         <button id="exitBtn"
                 class="mt-4 px-6 py-3 rounded-xl bg-gradient-to-r 
-                       from-brand-600 to-indigo-600 text-white font-bold shadow-lg 
+                       from-brand-600 to-indigo-600 text-white font.bold shadow-lg 
                        hover:from-brand-500 hover:to-indigo-500 transition active:scale-95">
             Salir
         </button>
@@ -562,10 +582,14 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* =======================================================
-   TIMER LOCAL (1 seg)
+   TIMER LOCAL (1 seg) — SOLO OFFLINE
 ======================================================= */
 setInterval(() => {
   if (!STATE.round.running) return;
+
+  // Si estamos conectados al socket,
+  // el tiempo lo manda el servidor (round:countdown)
+  if (socket.connected) return;
 
   if (Number(STATE.round.left) > 0) {
     STATE.round.left--;
