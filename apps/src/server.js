@@ -63,25 +63,21 @@ app.use((req, _res, next) => { req.io = io; next(); });
 app.use('/api/games', gamesRouter);
 app.use('/api', roundsRouter);
 app.use('/api', answersRouter);
+
 /* =======================================================================
    TIMERS POR RONDA (motor del juego)
-   → Se crea un timer por cada roundId
-   → Al llegar a 0 → finishRound()
-   → Cada tick emite round:countdown
 ======================================================================= */
 const ROUND_TIMERS = new Map();
 
-async function startRoundTimer(round) {
+export async function startRoundTimer(round) {
   const roundId = round.id;
+
   const game = await gameRepo.getGameById(round.game_id);
   if (!game) return;
 
   const room = game.code;
+  let timeLeft = Number(round.duration_sec) || 60;
 
-  let timeLeft = Number(round.duration_sec);
-  if (!timeLeft || timeLeft <= 0) timeLeft = 60;
-
-  // Si ya existía el timer, lo limpiamos
   if (ROUND_TIMERS.has(roundId)) {
     clearInterval(ROUND_TIMERS.get(roundId));
     ROUND_TIMERS.delete(roundId);
@@ -160,7 +156,6 @@ async function finishRound(roundId) {
       nextInSec: 5
     });
 
-    // Revisión: ¿se terminó la partida?
     const end = await gameService.checkGameEnd(game.id);
     if (end.finished) {
       io.to(game.code).emit("game:finished", {
@@ -234,13 +229,6 @@ io.on("connection", (socket) => {
     console.log(`❎ WS desconectado: ${socket.id}`);
   });
 });
-
-/* =======================================================
-   PATCH: cuando se crea ronda → iniciar temporizador
-======================================================= */
-roundRepo.onRoundCreated = async (round) => {
-  await startRoundTimer(round);
-};
 
 /* =======================================================
    INICIO SERVER

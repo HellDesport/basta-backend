@@ -88,15 +88,15 @@ export async function startRound({ gameId, letter, durationSec = 60 }) {
   const roundNumber = await roundRepo.countRounds(gameId);
   const categories = await catRepo.listByGame(gameId);
 
-  // 🔥 DEVOLVER OBJETO COMPLETO Y COHERENTE
+  // OBJETO CONSISTENTE
   return {
     id: round.id,
-    gameId: round.game_id,           // ✔ necesario para server.js
+    gameId: round.game_id,
     letter: round.letter,
     secs: Number(round.duration_sec),
     durationSec: Number(round.duration_sec),
-    startsAt: round.starts_at,
-    endsAt: new Date(round.ends_at).toISOString(),
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
     number: roundNumber,
     roundNumber,
     categories
